@@ -1,0 +1,16 @@
+ README.md                                        | 26 [32m++++++++++++[m[31m------------[m
+ notebooks/01_first_look_and_discovery.ipynb      |  2 [32m+[m[31m-[m
+ notebooks/02_your_first_readable_model.ipynb     |  2 [32m+[m[31m-[m
+ notebooks/03_working_with_the_full_release.ipynb |  2 [32m+[m[31m-[m
+ work/README.md                                   | 20 [32m+++++++++[m[31m---------[m
+ work/notebooks/capstone.ipynb                    |  2 [32m+[m[31m-[m
+ work/notebooks/w01_research_question.ipynb       |  4 [32m++[m[31m--[m
+ work/notebooks/w02_ml_task_framing.ipynb         |  4 [32m++[m[31m--[m
+ work/notebooks/w03_data_contract.ipynb           |  2 [32m+[m[31m-[m
+ work/notebooks/w03_feature_leakage_check.ipynb   |  2 [32m+[m[31m-[m
+ work/notebooks/w04_baseline_score.ipynb          |  2 [32m+[m[31m-[m
+ work/notebooks/w04_signal_audit.ipynb            |  2 [32m+[m[31m-[m
+ work/notebooks/w05_model.ipynb                   |  2 [32m+[m[31m-[m
+ work/notebooks/w06_validation_audit.ipynb        |  2 [32m+[m[31m-[m
+ work/notebooks/w07_action_playbook.ipynb         |  2 [32m+[m[31m-[m
+ 15 files changed, 38 insertions(+), 38 deletions(-)
