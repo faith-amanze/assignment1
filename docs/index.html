@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>When Should a Page Be Refreshed? — A Precision-Ranked Approach to Content Decay</title>
+<meta name="description" content="A research paper on ranking which underperforming SEO pages deserve limited review time — model vs. baseline, honest validation, and a reason-coded action playbook.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F2F4F3;
+    --paper-raised:#FFFFFF;
+    --ink:#16211C;
+    --muted:#4E5D55;
+    --accent:#B8863B;
+    --accent-soft:#EADFC9;
+    --decline:#A13D2B;
+    --confirm:#2F6F4E;
+    --hairline:#D7DCD8;
+    --mono:'IBM Plex Mono', ui-monospace, monospace;
+    --display:'Fraunces', Georgia, serif;
+    --body:'Inter', -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--body); font-size:17px; line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .spine{max-width:700px; margin:0 auto; padding:0 24px;}
+  .wide{max-width:920px; margin:0 auto; padding:0 24px;}
+  .full{max-width:1080px; margin:0 auto; padding:0 24px;}
+
+  /* ---- Eyebrow / section numbering: real, mirrors canonical paper order ---- */
+  .eyebrow{
+    font-family:var(--mono); font-size:13px; letter-spacing:0.08em;
+    color:var(--accent); text-transform:uppercase; margin-bottom:10px; font-weight:600;
+  }
+  h1,h2,h3{font-family:var(--display); font-weight:600; line-height:1.15; margin:0 0 18px;}
+  h2{font-size:clamp(28px,4vw,38px); font-style:italic; font-weight:500;}
+  h3{font-size:20px; font-style:normal; font-weight:600; margin-bottom:10px;}
+  p{margin:0 0 18px;}
+  a{color:var(--accent); text-decoration-color:var(--accent-soft); text-underline-offset:3px;}
+  a:hover{text-decoration-color:var(--accent);}
+  .muted{color:var(--muted);}
+  .cap{font-family:var(--mono); font-size:13.5px; color:var(--muted); line-height:1.5;}
+
+  section{padding:64px 0;}
+  section.divider{border-top:1px solid var(--hairline);}
+
+  /* ---- Hero ---- */
+  .hero{padding:90px 0 60px; text-align:left;}
+  .hero .kicker{font-family:var(--mono); font-size:13px; letter-spacing:0.1em; color:var(--muted); text-transform:uppercase; margin-bottom:22px;}
+  .hero h1{font-size:clamp(34px,5.4vw,54px); font-weight:600; font-style:italic; letter-spacing:-0.01em; margin-bottom:26px;}
+  .hero .byline{font-family:var(--mono); font-size:14px; color:var(--muted); margin-bottom:40px;}
+  .hero .byline a{color:var(--muted);}
+  .abstract{
+    background:var(--paper-raised); border:1px solid var(--hairline); border-radius:2px;
+    padding:28px 32px; font-size:16.5px; line-height:1.75;
+  }
+  .abstract .eyebrow{margin-bottom:14px;}
+
+  /* ---- Signature element: Position Decay Strip ---- */
+  .decay-strip{margin:44px 0 8px; overflow-x:auto;}
+  .decay-row{display:flex; gap:3px; min-width:560px;}
+  .decay-cell{
+    flex:1; height:64px; border-radius:1px; position:relative;
+    display:flex; align-items:flex-end; justify-content:center; padding-bottom:6px;
+    font-family:var(--mono); font-size:11px; color:#fff; font-weight:600;
+  }
+  .decay-caption{font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:10px;}
+
+  /* ---- Tables ---- */
+  table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:14.5px; margin:20px 0;}
+  th,td{text-align:left; padding:10px 14px; border-bottom:1px solid var(--hairline);}
+  th{color:var(--muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:0.04em;}
+  tr.highlight td{background:var(--accent-soft); font-weight:600;}
+  td.num{text-align:right; font-variant-numeric:tabular-nums;}
+  th.num{text-align:right;}
+
+  /* ---- Charts ---- */
+  figure{margin:32px 0;}
+  figure img{width:100%; height:auto; border:1px solid var(--hairline); border-radius:2px; background:var(--paper-raised);}
+  figcaption{font-family:var(--mono); font-size:13.5px; color:var(--muted); margin-top:10px; line-height:1.5;}
+
+  /* ---- Callouts ---- */
+  .callout{
+    border-left:3px solid var(--accent); background:var(--paper-raised);
+    padding:18px 22px; margin:24px 0; font-size:15.5px;
+  }
+  .callout.limit{border-left-color:var(--decline);}
+  .callout.confirm{border-left-color:var(--confirm);}
+  .tag{
+    display:inline-block; font-family:var(--mono); font-size:11px; font-weight:600;
+    letter-spacing:0.05em; padding:3px 8px; border-radius:2px; text-transform:uppercase;
+    margin-right:8px;
+  }
+  .tag.confirmed{background:#E1EEE6; color:var(--confirm);}
+  .tag.mixed{background:#F2E7DA; color:var(--accent);}
+
+  /* ---- Recommendation tiers ---- */
+  .tier-list{display:flex; flex-direction:column; gap:10px; margin:24px 0;}
+  .tier{
+    display:flex; align-items:center; gap:16px; padding:14px 18px;
+    background:var(--paper-raised); border:1px solid var(--hairline); border-radius:2px;
+  }
+  .tier .swatch{width:10px; height:34px; border-radius:1px; flex-shrink:0;}
+  .tier .name{font-family:var(--mono); font-weight:600; font-size:14px; min-width:190px;}
+  .tier .desc{color:var(--muted); font-size:14px; flex:1;}
+  .tier .count{font-family:var(--mono); font-size:14px; font-weight:600; text-align:right; min-width:70px;}
+
+  /* ---- Footer / repro ---- */
+  footer{padding:60px 0 90px; border-top:1px solid var(--hairline);}
+  .repro-list{list-style:none; padding:0; margin:18px 0; font-family:var(--mono); font-size:14px;}
+  .repro-list li{padding:7px 0; border-bottom:1px solid var(--hairline);}
+  .credit-box{
+    margin-top:40px; padding:22px 26px; background:var(--ink); color:var(--paper);
+    border-radius:2px; font-size:15px;
+  }
+  .credit-box a{color:var(--accent-soft);}
+
+  /* ---- Reveal on scroll ---- */
+  .reveal{opacity:0; transform:translateY(14px); transition:opacity .6s ease, transform .6s ease;}
+  .reveal.in{opacity:1; transform:none;}
+  @media (prefers-reduced-motion: reduce){
+    .reveal{opacity:1; transform:none; transition:none;}
+    html{scroll-behavior:auto;}
+  }
+
+  @media (max-width:640px){
+    .hero{padding:56px 0 40px;}
+    section{padding:44px 0;}
+    .tier{flex-wrap:wrap;}
+    .tier .name{min-width:0;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero spine">
+  <div class="kicker">Content Refresh Prioritization &nbsp;·&nbsp; FlyRank ML Internship Capstone</div>
+  <h1>When should a page be refreshed?</h1>
+  <p class="muted" style="font-size:19px; margin-top:-10px;">A precision-ranked approach to SEO content decay, tested against a transparent baseline on an honest, client-held-out split.</p>
+  <div class="byline">By Faith Amanze &nbsp;·&nbsp; <a href="https://github.com/faith-amanze/content-refresh-prioritization" target="_blank" rel="noopener">github.com/faith-amanze/content-refresh-prioritization</a></div>
+
+  <div class="abstract reveal">
+    <div class="eyebrow">Abstract</div>
+    <p style="margin-bottom:0;">Which of a content team's underperforming pages are worth the limited hours available to review them — and can a simple learned ranking beat a hand-written rule at picking them? Using a 30,000-page anonymized sample from FlyRank's SEO content warehouse (32 client accounts, one 90-day snapshot), I built a transparent baseline rule and three candidate models — logistic regression, a shallow decision tree, and a random forest — evaluated on an identical client-holdout split so no client's pages could leak between training and evaluation. A logistic regression model, scored only on features knowable before any outcome window, ranked the top 50 highest-priority pages at 74.0% precision, against 48.0% for the hand-written rule and a 51.7% base rate — while a naive random 80/20 split inflated that same model's numbers by 8–10 points, a gap this paper measures directly rather than assumes away. The result is a ranked, reason-coded action playbook for a content team's review queue — a decision-support tool, not a certainty score, with its limits stated as plainly as its results.</p>
+  </div>
+
+  <div class="decay-strip reveal" id="decayStrip"></div>
+  <div class="decay-caption">Measured CTR by search position, this dataset (n=28,795 pages with valid position data) — the strongest, most confirmed signal in this study.</div>
+</header>
+
+<main>
+
+<section class="divider">
+  <div class="spine reveal">
+    <div class="eyebrow">01 — Introduction</div>
+    <h2>The queue is longer than the hours</h2>
+    <p>A content team managing thousands of pages across dozens of client accounts cannot review every page every month. Someone has to decide which pages go into this week's refresh queue — and today, that decision is either a gut call or a rigid hand-written rule.</p>
+    <p>The unit of analysis here is a single page. The decision this work supports: <em>which pages should a content strategist or SEO analyst spend their limited review hours on this cycle?</em> A wrong call cuts two ways. A missed decliner (a false negative) keeps losing traffic quietly, a cost that's real but hard to see. A false alarm (a false positive) burns a scarce review hour on a page that didn't need it. Since review time is the constrained resource, this paper treats <strong>Precision@50</strong> — of the top 50 pages ranked highest-priority, what fraction genuinely deserve review — as the metric that matches the actual decision, not overall accuracy across all 30,000 pages.</p>
+  </div>
+</section>
+
+<section class="divider">
+  <div class="spine reveal">
+    <div class="eyebrow">02 — Data</div>
+    <h2>One snapshot, thirty thousand pages</h2>
+    <p>This analysis uses the anonymized starter sample released for the FlyRank ML internship: <strong>30,000 content pages across 32 of the warehouse's 104 total client accounts</strong>, one row per page, describing a single trailing 90-day window. The full internship warehouse (~79 million rows, hosted separately via Hugging Face) was <strong>not</strong> used here — extending these findings to that full release is future work, not a claim this paper makes.</p>
+    <p>Fields fall into four buckets: <strong>features</strong> (25 columns — traffic, engagement, position, content, and keyword-economics fields, all knowable before any outcome window), <strong>label</strong> (<code>trend_direction</code>/<code>trend_pct</code>, defining whether a page is "declining"), <strong>context</strong> (pseudonymous <code>content_id</code>/<code>client_id</code>, used only for grouping, never as model inputs), and <strong>excluded</strong> — 15 columns deliberately left out, most importantly the <code>*_last_30d</code>/<code>*_prev_30d</code> family, since the label is defined directly from a comparison of those two windows and including them would let a model reconstruct the label rather than learn a real pattern.</p>
+    <div class="callout">
+      <strong>Public-safety note:</strong> every identifier in this dataset (page and client) is a pseudonym generated for this release. No real client names, URLs, or search queries appear anywhere in this analysis, its notebooks, or this page.
+    </div>
+  </div>
+</section>
+
+<section class="divider">
+  <div class="spine reveal">
+    <div class="eyebrow">03 — Methodology</div>
+    <h2>What counts as declining, and how it's checked</h2>
+    <p><strong>Target:</strong> a page is labeled "declining" when <code>trend_direction == "down"</code> — 54.2% of pages in this sample carry that label. This is an observed signal from the data, not a rule I invented.</p>
+    <p><strong>Baseline:</strong> a transparent, hand-written rule — a page is worth reviewing if it ranks in a weak position (11th or worse) <em>and</em> has real search visibility (≥500 impressions in 90 days). No model, no training, fully auditable in one sentence.</p>
+    <p><strong>Validation design:</strong> a <strong>grouped, client-holdout split</strong> (75/25 by client, not by row) — every page from a given client sits entirely on one side of the split. Splitting by row instead would let a model partly learn a client's own traffic quirks rather than a signal that generalizes to a client it has never seen.</p>
+
+    <div class="callout confirm">
+      <span class="tag confirmed">Confirmed</span> A naive random 80/20 split — the kind used without disclosure in some published SEO research — inflates this exact model's accuracy by <strong>+8.0 points</strong> and ROC AUC by <strong>+9.5 points</strong> compared to the honest grouped split. See Section 05 for the full comparison.
+    </div>
+
+    <p><strong>Leakage check:</strong> the "attack your own model" test — refit the model with a suspect column added back in, and watch for a suspicious jump. Adding <code>trend_pct</code> (the label's own source) back in pushes ROC AUC from 0.608 to <strong>0.999</strong> — a textbook confession. Adding the <code>last_30d</code>/<code>prev_30d</code> window family back in pushes it to 0.756 — a real, smaller leak. Both confirm the exclusions above were correct, not just assumed.</p>
+  </div>
+</section>
+
+<section class="divider">
+  <div class="spine reveal">
+    <div class="eyebrow">04 — Results</div>
+    <h2>Every model beats the rule — modestly, and on the same ground</h2>
+    <p>All three candidate models were evaluated against the baseline rule on the <strong>identical held-out test rows</strong> — 7,115 pages from 8 client accounts none of the models saw during training.</p>
+  </div>
+  <div class="wide reveal">
+    <figure>
+      <img src="assets/chart_model_vs_baseline.png" alt="Bar chart comparing Precision@50 across base rate, baseline rule, random forest, decision tree, and logistic regression">
+      <figcaption>Logistic regression leads on Precision@50 despite random forest scoring a marginally higher ROC AUC (0.608 vs 0.600) — a reminder that the metric matching the real decision (top-of-queue precision) doesn't always favor the most complex model.</figcaption>
+    </figure>
+    <table>
+      <thead><tr><th>Model</th><th class="num">Precision@50</th><th class="num">ROC AUC</th><th class="num">Avg. precision</th></tr></thead>
+      <tbody>
+        <tr><td>Base rate (test set)</td><td class="num">0.517</td><td class="num">—</td><td class="num">—</td></tr>
+        <tr><td>Baseline rule (hand-written)</td><td class="num">0.480</td><td class="num">0.486</td><td class="num">0.507</td></tr>
+        <tr><td>Random forest</td><td class="num">0.500</td><td class="num">0.608</td><td class="num">0.591</td></tr>
+        <tr><td>Decision tree (depth 4)</td><td class="num">0.640</td><td class="num">0.597</td><td class="num">0.582</td></tr>
+        <tr class="highlight"><td>Logistic regression</td><td class="num">0.740</td><td class="num">0.600</td><td class="num">0.605</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="spine reveal">
+    <p><strong>Where the winning model is wrong:</strong> on the held-out set, 30.5% of pages it flags as declining aren't (false positives), and it misses 13.2% of actual decliners (false negatives). The false positives share a pattern: several are pages in good positions (4–9) trending "up," with a CTR reading of exactly 0.00% — low absolute traffic swinging to a zero-click reading by chance, which the model misreads as decline. The false negatives skew toward very low-traffic pages with almost nothing to detect a decline from in the first place.</p>
+    <p>Permutation importance (scored on average precision, since the task is ranking, not a plain yes/no call) shows <code>days_with_impressions</code>, <code>days_with_sessions</code>, and <code>avg_position</code> as the strongest drivers — the model leans on how <em>consistently</em> a page shows up, not just raw traffic totals.</p>
+
+    <div class="callout">
+      <span class="tag mixed">Supporting signal</span> The position→CTR relationship shown in the hero strip above is the single strongest, most confirmed pattern in this dataset: CTR falls from 2.71% at positions 1–3 to 0.15% at position 50+, monotonically, across sample sizes from n=1,141 to n=11,842.
+    </div>
+  </div>
+</section>
+
+<section class="divider">
+  <div class="spine reveal">
+    <div class="eyebrow">05 — Methodology in practice: the split that lied</div>
+    <h2>The gap a disclosed split closes</h2>
+    <p>Reading a separate research paper built on this same warehouse, I noticed its methodology page described an "80/20 split" for its models with no mention of grouping by brand, across a sample spanning 57 brands. That's the same trap a row-level split creates: a model can partly learn brand-specific quirks rather than a signal that generalizes. Rather than take that as a hypothesis, I tested it directly on my own model.</p>
+  </div>
+  <div class="wide reveal">
+    <figure>
+      <img src="assets/chart_honest_split.png" alt="Grouped bar chart comparing accuracy, ROC AUC, and Precision@50 between a naive random split and an honest grouped client-holdout split">
+      <figcaption>Same model, same features, same data — the only thing that changed is whether client accounts were allowed to appear on both sides of the split. A naive split isn't dishonest by intent, but it is a source of measurable, avoidable overstatement.</figcaption>
+    </figure>
+  </div>
+  <div class="spine reveal">
+    <p>A random 80/20 split (no grouping) inflates accuracy by 8.0 points and ROC AUC by 9.5 points over the grouped, client-honest split — on the exact same model. This doesn't mean any other paper's specific numbers are wrong; it means a split's grouping strategy is not a footnote, it's load-bearing, and this paper reports which one it used at every step above.</p>
+  </div>
+</section>
+
+<section class="divider">
+  <div class="spine reveal">
+    <div class="eyebrow">06 — Limitations</div>
+    <h2>What this work cannot claim</h2>
+  </div>
+  <div class="wide reveal" style="display:flex; flex-direction:column; gap:14px;">
+    <div class="callout limit"><strong>Not causal.</strong> Every result here is observed and directional. Nothing in this paper establishes that refreshing a flagged page <em>causes</em> improved performance — that would require an experiment (e.g. a controlled before/after refresh test), which this study does not run.</div>
+    <div class="callout limit"><strong>A modest model, not a verdict.</strong> ROC AUC of 0.608 is a real, measured lift over the baseline's 0.486 — and also far from a reliable per-page certainty. Roughly 1 in 4 of even the top-ranked recommendations will be wrong on inspection. That's expected, not a flaw to hide.</div>
+    <div class="callout limit"><strong>Partial, single-snapshot coverage.</strong> 32 of 104 total client accounts, one 90-day window. This is not a live feed, and results may shift on a different time window or the full client population.</div>
+    <div class="callout limit"><strong>"Declining" ≠ "worst performer."</strong> Pages trending "down" have the lowest average CTR of any trend group (0.32%) — but pages trending "up" actually have the <em>worst</em> average position (22.5) of any group. The label captures recent trajectory, not overall page health; a page can be trending up while still ranking badly, and this playbook alone won't catch that combination.</div>
+  </div>
+</section>
+
+<section class="divider">
+  <div class="spine reveal">
+    <div class="eyebrow">07 — Ranked recommendations</div>
+    <h2>A five-tier action playbook, not a single score</h2>
+    <p>Every page in the dataset is assigned one action and one reason code, combining the baseline rule, the model's decline probability, and a content-type carve-out (feedly-sourced articles decline at 28.7% versus 56%+ for keyword/comparison articles, and warrant a separate review lens).</p>
+  </div>
+  <div class="wide reveal">
+    <div class="tier-list">
+      <div class="tier"><div class="swatch" style="background:#B8863B"></div><div class="name">PRIORITY_REFRESH</div><div class="desc">Weak position + real visibility + model agrees it's declining — the strongest, most trustworthy tier.</div><div class="count">4,560</div></div>
+      <div class="tier"><div class="swatch" style="background:#C9A15C"></div><div class="name">REVIEW_CTR</div><div class="desc">Weak position + visibility, baseline signal alone (model unsure) — the fallback tier.</div><div class="count">3,976</div></div>
+      <div class="tier"><div class="swatch" style="background:#D3AE73"></div><div class="name">FEEDLY_REVIEW_SEPARATE</div><div class="desc">Aggregated content the model flags as declining — needs its own review lens, not this rule.</div><div class="count">96</div></div>
+      <div class="tier"><div class="swatch" style="background:#8FA396"></div><div class="name">MONITOR_LOW_VOLUME</div><div class="desc">Model flags decline, but too little traffic to act on confidently — watch, don't act yet.</div><div class="count">3,592</div></div>
+      <div class="tier"><div class="swatch" style="background:#D7DCD8"></div><div class="name">NO_ACTION</div><div class="desc">No strong signal, or no position data to act on at all.</div><div class="count">17,776</div></div>
+    </div>
+    <figure>
+      <img src="assets/chart_action_tiers.png" alt="Horizontal bar chart showing the number of pages assigned to each action tier">
+      <figcaption>Pages per action tier, this snapshot.</figcaption>
+    </figure>
+  </div>
+  <div class="spine reveal">
+    <h3>What a human must check before acting</h3>
+    <p>25.0% of <code>PRIORITY_REFRESH</code> pages sit under 1,000 impressions in 90 days — precisely the low-volume profile shown in Section 04 to produce false positives. These need a person's sanity check, not an automated trigger. And 1,847 pages trend "up" while still ranking 20th or worse — worth a look, even though this playbook doesn't flag them.</p>
+    <h3>What should never be automated</h3>
+    <p>No automatic publishing, rewriting, redirecting, or deleting from this queue. No merging or consolidating pages without a human confirming they target the same intent. No treating a "declining" label alone as proof a page is the worst performer — Section 06 shows why that assumption breaks.</p>
+    <h3>Monitoring &amp; retrain triggers</h3>
+    <p>Re-check Precision@50 on every fresh snapshot — if it falls to or below the 0.480 rule-baseline, the model has stopped earning its complexity. If the declining base rate moves more than ~10 points from 0.542, or the action-tier mix more than doubles or halves between snapshots, treat that as a signal to investigate before trusting the new queue.</p>
+  </div>
+</section>
+
+<footer class="spine">
+  <div class="eyebrow">08 — Reproducibility</div>
+  <h3 style="font-family:var(--display); font-style:italic; font-weight:500; font-size:24px;">Rerun every number in this paper</h3>
+  <p class="muted">Random seed 42 throughout. Fresh clone → <code>pip install -r requirements.txt</code> → run the notebooks below in order.</p>
+  <ul class="repro-list">
+    <li><a href="https://github.com/faith-amanze/content-refresh-prioritization/blob/main/work/notebooks/w03_data_contract.ipynb" target="_blank" rel="noopener">work/notebooks/w03_data_contract.ipynb</a> — data contract</li>
+    <li><a href="https://github.com/faith-amanze/content-refresh-prioritization/blob/main/work/notebooks/w03_feature_leakage_check.ipynb" target="_blank" rel="noopener">work/notebooks/w03_feature_leakage_check.ipynb</a> — feature vector + leakage hunt</li>
+    <li><a href="https://github.com/faith-amanze/content-refresh-prioritization/blob/main/work/notebooks/w04_baseline_score.ipynb" target="_blank" rel="noopener">work/notebooks/w04_baseline_score.ipynb</a> — baseline rule</li>
+    <li><a href="https://github.com/faith-amanze/content-refresh-prioritization/blob/main/work/notebooks/w04_signal_audit.ipynb" target="_blank" rel="noopener">work/notebooks/w04_signal_audit.ipynb</a> — signal audit</li>
+    <li><a href="https://github.com/faith-amanze/content-refresh-prioritization/blob/main/work/notebooks/w05_model.ipynb" target="_blank" rel="noopener">work/notebooks/w05_model.ipynb</a> — model vs. baseline</li>
+    <li><a href="https://github.com/faith-amanze/content-refresh-prioritization/blob/main/work/notebooks/w06_validation_audit.ipynb" target="_blank" rel="noopener">work/notebooks/w06_validation_audit.ipynb</a> — validation + methodology audit</li>
+    <li><a href="https://github.com/faith-amanze/content-refresh-prioritization/blob/main/work/notebooks/w07_action_playbook.ipynb" target="_blank" rel="noopener">work/notebooks/w07_action_playbook.ipynb</a> — action playbook</li>
+    <li><a href="https://github.com/faith-amanze/content-refresh-prioritization/blob/main/work/notebooks/capstone.ipynb" target="_blank" rel="noopener">work/notebooks/capstone.ipynb</a> — this paper, as a notebook</li>
+  </ul>
+
+  <div class="credit-box">
+    <div class="eyebrow" style="color:var(--accent-soft);">09 — Acknowledgments &amp; data credit</div>
+    Built on the FlyRank ML Internship dataset — <a href="https://flyrank.ai" target="_blank" rel="noopener">flyrank.ai</a>.
+  </div>
+</footer>
+
+</main>
+
+<script>
+  // Signature element: position-decay strip, built from the real measured CTR curve.
+  (function(){
+    var data = [
+      {label:"1–3", ctr:2.714303},
+      {label:"4–10", ctr:0.651045},
+      {label:"11–20", ctr:0.323443},
+      {label:"21–50", ctr:0.222345},
+      {label:"50+", ctr:0.150784}
+    ];
+    var max = data[0].ctr;
+    var row = document.createElement("div");
+    row.className = "decay-row";
+    data.forEach(function(d){
+      var cell = document.createElement("div");
+      cell.className = "decay-cell";
+      var t = d.ctr / max; // 0..1
+      var lightness = 30 + (1 - t) * 45; // darker = higher CTR
+      cell.style.background = "hsl(35, 45%, " + lightness + "%)";
+      cell.textContent = d.label;
+      row.appendChild(cell);
+    });
+    document.getElementById("decayStrip").appendChild(row);
+  })();
+
+  // Gentle reveal-on-scroll
+  if ("IntersectionObserver" in window) {
+    var els = document.querySelectorAll(".reveal");
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+      });
+    }, {threshold:0.12});
+    els.forEach(function(el){ io.observe(el); });
+  } else {
+    document.querySelectorAll(".reveal").forEach(function(el){ el.classList.add("in"); });
+  }
+</script>
+
+</body>
+</html>
